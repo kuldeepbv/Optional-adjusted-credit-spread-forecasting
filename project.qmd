@@ -1,0 +1,379 @@
+---
+title: "Smart Investment"
+author: "Kuldeep Vadiya | Yash Patil"
+format: revealjs
+editor: visual
+toc: true
+toc-depth: 1
+slide-number: true
+smaller: false
+scrollable: false 
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, include=FALSE}
+library(reprex)
+library(fredr)
+library(dplyr)
+library(tidyverse)
+library(tseries)
+library(forecast)
+library(vars)
+
+fredr_set_key('33b45f8519b2a909fca701748cf47495')
+```
+
+```{r setup, include=FALSE}
+# Set up chunk for all slides
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  cache = TRUE,
+  dev.args = list(pointsize = 11)
+)
+```
+
+# Problem Statement
+
+-   In the face of dynamic bond market conditions characterized by credit spreads, interest rate fluctuations, and economic uncertainties, investors lack a structured approach to maximize returns and manage risks effectively. There is a pressing need for a strategic time series model that provides actionable insights to identify optimal bond investment opportunities and navigate the complexities of the fixed-income market with confidence.
+
+## What is mean by Spread?
+
+-   Spread is our target variable.
+-   It is a measure used in finance to evaluate the relative attractiveness of corporate bonds compared to U.S.Treasury bonds.
+-   $$ \text{Spread} = \text{Interest rate by Company} - \text{Interest rate by US Treasury bond} $$
+
+# Data Overview
+
+## US High Yield Index Option-Adjusted Spread Dataset
+
+-   Dataset includes measures of difference in yields high-risk (non-investment grade) corporate bonds bonds and risk-free US Treasury bonds overtime.
+
+```{r}
+#| output-location: slide
+high_yield <- fredr(series_id = "BAMLH0A0HYM2") %>%
+               dplyr::select(date,value)
+
+ggplot(high_yield, aes(x = date)) +
+  geom_line(aes(y = value), color = "red") +
+  labs(title = "High Yield Index Option-Adjusted Spread Time Series Data",
+       y = "Value", x = "Date") +
+  theme_minimal()
+
+high_yield <- na.omit(high_yield)
+
+high_yield_ts <- ts(high_yield$value, frequency = 365) 
+```
+
+## US Corporate Index Option-Adjusted Spread Dataset
+
+-   Dataset includes measures of difference in yields between low-risk (Investment grade) corporate bonds and risk-free US Treasury bonds overtime.
+
+```{r}
+corp <- fredr(series_id = "BAMLC0A0CM")%>%
+                   dplyr::select(date,value)
+
+ggplot(corp, aes(x = date)) +
+  geom_line(aes(y = value), color = "blue") +
+  labs(title = "Corporate Index Option-Adjusted Spread Time Series Data",
+       y = "Value", x = "Date") +
+  theme_minimal()
+
+corp <- na.omit(corp)
+  
+corp_ts <- ts(corp$value, frequency = 365)
+```
+
+## Merged Dataset
+
+```{r}
+combined_data <- inner_join(high_yield, corp, by = "date")
+
+combined_data <- combined_data %>%
+              rename("high_yield_value" = "value.x") %>%
+              rename("corp_value" = "value.y")
+
+ggplot(combined_data, aes(x = date)) +
+  geom_line(aes(y = high_yield_value, color = "High Yield Index")) +
+  geom_line(aes(y = corp_value, color = "Corporate Index")) +
+  labs(title = "Combined Time Series Data",
+       y = "Value", x = "Date") +
+  theme_minimal()
+```
+
+# Data Analysis
+
+## High yield Index Decomposition plot
+
+```{r}
+high_yield_decomp <- decompose(high_yield_ts)
+plot(high_yield_decomp)
+```
+
+## Corporate Index Decomposition plot
+
+```{r}
+corp_decomp <- decompose(corp_ts)
+plot(corp_decomp)
+```
+
+## Stationarity check of High yield Index bond dataset
+
+```{r}
+adf_test_high_yield <- adf.test(high_yield_ts)
+adf_test_high_yield
+```
+
+-   After Differencing
+
+```{r}
+diff_adf_test_high_yield <- adf.test(diff(high_yield_ts))
+diff_adf_test_high_yield
+
+```
+
+## Stationarity check of Corporate Index bond dataset
+
+```{r}
+adf_test_corp <- adf.test(corp_ts)
+adf_test_corp
+```
+
+-   After Differencing
+
+```{r}
+diff_adf_test_corp <- adf.test(diff(corp_ts))
+diff_adf_test_corp
+```
+
+```{r}
+combined_data$high_yield_value <- c(NA, diff(high_yield_ts, lag = 1)) 
+combined_data$corp_value <- c(NA, diff(corp_ts, lag = 1))
+combined_data <- na.omit(combined_data)
+
+ts_combined_data <- ts(combined_data[, -1], frequency = 365)
+```
+
+## ACF Plot of High Yield Index
+
+```{r}
+acf(combined_data$high_yield_value)
+```
+
+## PACF Plot of High Yield Index
+
+```{r}
+pacf(combined_data$high_yield_value)
+```
+
+## Correlation
+
+```{r}
+correlation <- cor(combined_data$high_yield_value, combined_data$corp_value)
+print(paste("Correlation between both data is", round(correlation, 2)))
+
+ccf(combined_data$high_yield_value, combined_data$corp_value, main = "CCF between High Yield Index and Corporate Index")
+```
+
+# Model and Forecast
+
+## ARIMA Model
+
+-   ARIMA(1,1,0)
+
+```{r}
+arima_110 <- Arima(ts_combined_data[, "high_yield_value"], order=c(1,1,0), xreg=ts_combined_data[, "corp_value"])
+
+summary(arima_110)
+```
+
+```{r}
+checkresiduals(arima_110)
+
+residuals_110 <- resid(arima_110)
+plot(residuals_110)
+```
+
+## 
+
+-   ARIMA(1,1,1)
+
+```{r}
+arima_111 <- Arima(ts_combined_data[, "high_yield_value"], order=c(1,1,1), xreg=ts_combined_data[, "corp_value"])
+summary(arima_111)
+```
+
+```{r}
+checkresiduals(arima_111)
+
+residuals_111 <- resid(arima_111)
+plot(residuals_111)
+```
+
+## 
+
+-   ARIMA(1,1,2)
+
+```{r}
+arima_112 <- Arima(ts_combined_data[, "high_yield_value"], order=c(1,1,2), xreg=ts_combined_data[, "corp_value"])
+summary(arima_112)
+```
+
+```{r}
+checkresiduals(arima_112)
+
+residuals_112 <- resid(arima_112)
+plot(residuals_112)
+```
+
+## Comparison Between Arima Models
+
+```{r}
+aic_values <- c(AIC(arima_110), AIC(arima_111), AIC(arima_112))
+bic_values <- c(BIC(arima_110), BIC(arima_111), BIC(arima_112))
+
+model_comparison <- data.frame(
+  Model = c("ARIMA(1,1,0)", "ARIMA(1,1,1)", "ARIMA(1,1,2)"),
+  AIC = aic_values,
+  BIC = bic_values
+)
+
+print(model_comparison)
+```
+
+-   Based on Analysis, we have chosen ARIMA(1,1,1) as it has the lowest AIC and BIC Value amongst them.
+
+## Forecast of ARIMA
+
+```{r}
+forecast_values_arima <- forecast(arima_111, h = 1000, xreg = tail(ts_combined_data[, "corp_value"], n = 1000)) 
+
+last_observed_high_yield <- tail(high_yield$value, 1)
+
+final_forecasted_values_arima <- numeric(length = length(forecast_values_arima$mean))
+
+for (i in 1:length(forecast_values_arima$mean)) {
+  forecasted_diff <- forecast_values_arima$mean[i]
+  final_forecasted_values_arima[i] <- last_observed_high_yield + forecasted_diff
+  last_observed_high_yield <- final_forecasted_values_arima[i]
+}
+
+#print(final_forecasted_values_arima)
+
+autoplot(high_yield_ts) +
+  autolayer(ts(final_forecasted_values_arima, start = end(high_yield_ts), frequency = 365), series = "ARIMA Forecast",) +
+  labs(title = "High Yield Value Forecast",
+       x = "Time", y = "Value")
+```
+
+## Vector AutoRegressive (VAR) Model
+
+```{r}
+var_model <- VAR(ts_combined_data)
+
+summary(var_model)
+```
+
+## Forecast of VAR
+
+```{r}
+forecast_var <- predict(var_model, n.ahead = 1000)
+
+last_var_high_yield <- tail(high_yield$value, 1)
+
+final_forecasted_values_var_high_yield <- numeric(length = length(forecast_var$fcst$high_yield_value[, "fcst"]))
+
+for (i in 1:length(forecast_var$fcst$high_yield_value[, "fcst"])) {
+  forecasted_diff_var <- forecast_var$fcst$high_yield_value[, "fcst"][i]
+  final_forecasted_values_var_high_yield[i] <- last_var_high_yield + forecasted_diff_var
+  last_var_high_yield <- final_forecasted_values_var_high_yield[i]
+}
+
+#print(final_forecasted_values_var_high_yield)
+
+autoplot(high_yield_ts) +
+  autolayer(ts(final_forecasted_values_var_high_yield, start = end(high_yield_ts), frequency = 365), series = "VAR Forecast",) +
+  labs(title = "VAR Forecast",
+       x = "Time", y = "Value")
+```
+
+```{r}
+# Forecast 30 days values of Corporate index bond
+
+#last_var_corp <- tail(corp$value, 1)
+
+#forecasted_values_var_corp <- numeric(length = #length(forecast_var$fcst$corp_value[, "fcst"]))
+
+#for (i in 1:length(forecast_var$fcst$corp_value[, "fcst"])) {
+#  forecasted_diff_var_corp <- forecast_var$fcst$corp_value[, "fcst"][i]
+#  forecasted_values_var_corp[i] <- last_var_corp + #forecasted_diff_var_corp
+#  last_var_corp <- forecasted_values_var_corp[i]
+#}
+
+#print(forecasted_values_var_corp)
+```
+
+## Forecast of both model
+
+```{r}
+autoplot(high_yield_ts) +
+  autolayer(ts(final_forecasted_values_arima, start = end(high_yield_ts), frequency = 365), series = "ARIMA Forecast") +
+  autolayer(ts(final_forecasted_values_var_high_yield, start = end(high_yield_ts), frequency = 365), series = "VAR Forecast") +
+  labs(title = "High Yield Value Forecast",
+       x = "Time", y = "Value")
+```
+
+# Cross-Validation
+
+```{r}
+train_data <- ts_combined_data[1 : floor(0.8 * nrow(ts_combined_data)), ] 
+test_data <- ts_combined_data[(floor(0.8 * nrow(ts_combined_data)) + 1):(nrow(ts_combined_data)), ]
+
+horizons <- c(1, 5, 10, 20, 50, 100)  
+mae_arima <- numeric(length(horizons))
+rmse_arima <- numeric(length(horizons))
+mae_var <- numeric(length(horizons))
+rmse_var <- numeric(length(horizons))
+
+for (i in seq_along(horizons)) {
+  arima_train <- Arima(train_data[, "high_yield_value"], order=c(1,1,1), xreg = train_data[, "corp_value"])
+  var_train <- VAR(train_data)
+  
+  forecast_arima_train <- forecast(arima_train, xreg = tail(train_data[, "corp_value"], horizons[i]), h = horizons[i])
+  forecast_var_train <- predict(var_train, n.ahead = horizons[i])
+  
+  mae_arima[i] <- mean(abs(forecast_arima_train$mean - test_data[, "high_yield_value"][1:horizons[i]]))
+  rmse_arima[i] <- sqrt(mean(abs(forecast_arima_train$mean - test_data[, "high_yield_value"][1:horizons[i]])^2))
+  
+  mae_var[i] <- mean(abs(forecast_var_train$fcst$high_yield_value[, "fcst"] - test_data[, "high_yield_value"][1:horizons[i]]))
+  rmse_var[i] <- sqrt(mean(abs(forecast_var_train$fcst$high_yield_value[, "fcst"] - test_data[, "high_yield_value"][1:horizons[i]])^2))
+}
+
+mae_results <- data.frame(
+  Horizon = horizons,
+  MAE_ARIMA = mae_arima,
+  MAE_VAR = mae_var
+)
+
+rmse_results <- data.frame(
+  Horizon = horizons,
+  RMSE_ARIMA = rmse_arima,
+  RMSE_VAR = rmse_var
+)
+
+print(mae_results)
+print(rmse_results)
+```
+
+# Results
+
+-   The ARIMA model outperforms the VAR model, showing lower MAE and RMSE values and providing dynamic forecasts, unlike VAR's constant outputs which we validated using cross-validation. Additionally, the data fits better with the ARIMA model.
+
+# Practical Implications
+
+-   **Portfolio Optimization**: Predicting credit spreads allows investors to optimize portfolios by making informed bond trading decisions, leading to strategic asset allocation and enhanced portfolio performance.
+-   **Economic Insight and Policy Making**: Predicting credit spreads offers insights into economic health, guiding policymakers and analysts in making informed decisions and anticipating downturns.
+
+# Thank you!
