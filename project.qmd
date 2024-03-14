@@ -42,11 +42,10 @@ knitr::opts_chunk$set(
 ## What is mean by Spread?
 
 -   Spread is our target variable.
--   It is a measure used in finance to evaluate the relative 
-attractiveness of Corporate bonds compared to U.S.Treasury bonds.
-- $$
-\text{Spread} = \text{Interest Rate}_{\text{(Corp)}} - \text{Interest Rate}_{\text{(Treasury)}}
-$$
+-   It is a measure used in finance to evaluate the relative attractiveness of Corporate bonds compared to U.S.Treasury bonds.
+-   $$
+    \text{Spread} = \text{Interest Rate}_{\text{(Corp)}} - \text{Interest Rate}_{\text{(Treasury)}}
+    $$
 
 # Data Overview
 
