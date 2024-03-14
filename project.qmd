@@ -7,7 +7,7 @@ toc: true
 toc-depth: 1
 slide-number: true
 smaller: false
-scrollable: false 
+scrollable: True 
 editor_options: 
   chunk_output_type: console
 ---
@@ -42,8 +42,11 @@ knitr::opts_chunk$set(
 ## What is mean by Spread?
 
 -   Spread is our target variable.
--   It is a measure used in finance to evaluate the relative attractiveness of corporate bonds compared to U.S.Treasury bonds.
--   $$ \text{Spread} = \text{Interest rate by Company} - \text{Interest rate by US Treasury bond} $$
+-   It is a measure used in finance to evaluate the relative 
+attractiveness of Corporate bonds compared to U.S.Treasury bonds.
+- $$
+\text{Spread} = \text{Interest Rate}_{\text{(Corp)}} - \text{Interest Rate}_{\text{(Treasury)}}
+$$
 
 # Data Overview
 
@@ -263,7 +266,7 @@ for (i in 1:length(forecast_values_arima$mean)) {
 #print(final_forecasted_values_arima)
 
 autoplot(high_yield_ts) +
-  autolayer(ts(final_forecasted_values_arima, start = end(high_yield_ts), frequency = 365), series = "ARIMA Forecast",) +
+  autolayer(ts(final_forecasted_values_arima, start = end(high_yield_ts), frequency = 365), series = "ARIMA Forecast") +
   labs(title = "High Yield Value Forecast",
        x = "Time", y = "Value")
 ```
@@ -294,25 +297,9 @@ for (i in 1:length(forecast_var$fcst$high_yield_value[, "fcst"])) {
 #print(final_forecasted_values_var_high_yield)
 
 autoplot(high_yield_ts) +
-  autolayer(ts(final_forecasted_values_var_high_yield, start = end(high_yield_ts), frequency = 365), series = "VAR Forecast",) +
+  autolayer(ts(final_forecasted_values_var_high_yield, start = end(high_yield_ts), frequency = 365), series = "VAR Forecast") +
   labs(title = "VAR Forecast",
        x = "Time", y = "Value")
-```
-
-```{r}
-# Forecast 30 days values of Corporate index bond
-
-#last_var_corp <- tail(corp$value, 1)
-
-#forecasted_values_var_corp <- numeric(length = #length(forecast_var$fcst$corp_value[, "fcst"]))
-
-#for (i in 1:length(forecast_var$fcst$corp_value[, "fcst"])) {
-#  forecasted_diff_var_corp <- forecast_var$fcst$corp_value[, "fcst"][i]
-#  forecasted_values_var_corp[i] <- last_var_corp + #forecasted_diff_var_corp
-#  last_var_corp <- forecasted_values_var_corp[i]
-#}
-
-#print(forecasted_values_var_corp)
 ```
 
 ## Forecast of both model
