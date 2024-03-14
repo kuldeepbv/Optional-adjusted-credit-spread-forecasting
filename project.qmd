@@ -51,7 +51,7 @@ knitr::opts_chunk$set(
 
 ## US High Yield Index Option-Adjusted Spread Dataset
 
--   Dataset includes measures of difference in yields high-risk (non-investment grade) corporate bonds bonds and risk-free US Treasury bonds overtime.
+-   Dataset includes measures of difference in yields high-risk (non-investment grade) corporate bonds bonds and risk-free US Treasury bonds overtime..
 
 ```{r}
 #| output-location: slide
