@@ -181,7 +181,7 @@ ccf(combined_data$high_yield_value, combined_data$corp_value, main = "CCF betwee
 
 # Model and Forecast
 
-## ARIMA Model
+## Reg ARIMA Model
 
 -   ARIMA(1,1,0)
 
@@ -247,7 +247,7 @@ print(model_comparison)
 
 -   Based on Analysis, we have chosen ARIMA(1,1,1) as it has the lowest AIC and BIC Value amongst them.
 
-## Forecast of ARIMA
+## Forecast of Reg ARIMA
 
 ```{r}
 forecast_values_arima <- forecast(arima_111, h = 1000, xreg = tail(ts_combined_data[, "corp_value"], n = 1000)) 
